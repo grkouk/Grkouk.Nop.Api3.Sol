@@ -9,7 +9,7 @@ using Microsoft.Extensions.Logging;
 namespace Grkouk.Nop.Api3.Controllers
 {
     [ApiController]
-    [ApiKeyAuth]
+  
     [Route("[controller]")]
     public class WeatherForecastController : ControllerBase
     {

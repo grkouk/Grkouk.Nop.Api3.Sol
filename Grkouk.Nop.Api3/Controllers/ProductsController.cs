@@ -3,12 +3,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Grkouk.Nop.Api3.Dtos;
+using Grkouk.Nop.Api3.Filters;
 using Grkouk.Nop.Api3.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace Grkouk.Nop.Api3.Controllers
 {
+    [ApiKeyAuth]
     [Route("api/[controller]")]
     [ApiController]
     public class ProductsController : ControllerBase
@@ -29,12 +31,10 @@ namespace Grkouk.Nop.Api3.Controllers
         [HttpGet("ProductCodes")]
         public async Task<ActionResult<IEnumerable<CodeDto>>> GetProductCodes(string codeBase)
         {
-
-
             List<CodeDto> items;
             if (string.IsNullOrEmpty(codeBase))
             {
-                items = await _context.Product.OrderByDescending(p=>p.Sku)
+                items = await _context.Product.OrderByDescending(p => p.Sku)
                     .Select(t => new CodeDto
                     {
                         Code = t.Sku
@@ -43,7 +43,7 @@ namespace Grkouk.Nop.Api3.Controllers
             else
             {
                 items = await _context.Product.Where(p => p.Sku.Contains(codeBase))
-                    .OrderByDescending(p=>p.Sku)
+                    .OrderByDescending(p => p.Sku)
                     .Select(t => new CodeDto
                     {
                         Code = t.Sku
@@ -68,7 +68,7 @@ namespace Grkouk.Nop.Api3.Controllers
                 items = items.Where(p => p.Code.Contains(codeBase));
             }
             var listItems = await items.OrderByDescending(p => p.Code).ToListAsync();
-           
+
             return Ok(listItems);
         }
         // GET: api/Products/5

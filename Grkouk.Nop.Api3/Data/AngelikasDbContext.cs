@@ -1,18 +1,19 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Grkouk.Nop.Api3.Models;
+using Microsoft.EntityFrameworkCore;
 
-namespace Grkouk.Nop.Api3.Models
+namespace Grkouk.Nop.Api3.Data
 {
-    public partial class ApiDbContext : DbContext
+    public partial class AngelikasDbContext : DbContext
     {
-        public ApiDbContext()
+        public AngelikasDbContext()
         {
         }
 
-        public ApiDbContext(DbContextOptions<ApiDbContext> options)
+        public AngelikasDbContext(DbContextOptions<AngelikasDbContext> options)
             : base(options)
         {
         }
-
+        #region DbSets
         public virtual DbSet<AclRecord> AclRecord { get; set; }
         public virtual DbSet<ActivityLog> ActivityLog { get; set; }
         public virtual DbSet<ActivityLogType> ActivityLogType { get; set; }
@@ -137,7 +138,7 @@ namespace Grkouk.Nop.Api3.Models
         public virtual DbSet<VendorAttributeValue> VendorAttributeValue { get; set; }
         public virtual DbSet<VendorNote> VendorNote { get; set; }
         public virtual DbSet<Warehouse> Warehouse { get; set; }
-
+#endregion
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
             if (!optionsBuilder.IsConfigured)
@@ -1991,6 +1992,15 @@ namespace Grkouk.Nop.Api3.Models
                     .IsRequired()
                     .HasMaxLength(400);
             });
+        }
+    }
+
+    public class TestDbContext : AngelikasDbContext
+    {
+        public TestDbContext(DbContextOptions<TestDbContext> options)
+            : base(options)
+        {
+            
         }
     }
 }

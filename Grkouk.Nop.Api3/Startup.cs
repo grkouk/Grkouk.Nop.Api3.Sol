@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Grkouk.Nop.Api3.Data;
 using Grkouk.Nop.Api3.Models;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -27,8 +28,8 @@ namespace Grkouk.Nop.Api3
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddDbContext<ApiDbContext>(options =>
-                options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection")));
+            services.AddDbContext<AngelikasDbContext>(options =>
+                options.UseSqlServer(Configuration.GetConnectionString("AngelikasDbConnection")));
             services.AddControllers();
         }
 

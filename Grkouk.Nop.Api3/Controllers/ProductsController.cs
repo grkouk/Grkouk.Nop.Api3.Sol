@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Grkouk.Nop.Api3.Data;
 using Grkouk.Nop.Api3.Dtos;
 using Grkouk.Nop.Api3.Filters;
 using Grkouk.Nop.Api3.Models;
@@ -15,9 +16,9 @@ namespace Grkouk.Nop.Api3.Controllers
     [ApiController]
     public class ProductsController : ControllerBase
     {
-        private readonly ApiDbContext _context;
+        private readonly AngelikasDbContext _context;
 
-        public ProductsController(ApiDbContext context)
+        public ProductsController(AngelikasDbContext context)
         {
             _context = context;
         }

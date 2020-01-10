@@ -9,7 +9,7 @@ namespace Grkouk.Nop.Api3.Dtos
     {
         public int ProductId { get; set; }
         public string  ProductName { get; set; }
-        public string VirtualPath { get; set; }
+       
         public string SeoFilename { get; set; } 
     }
 }

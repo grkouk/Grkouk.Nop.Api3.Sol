@@ -6,6 +6,7 @@ using Grkouk.Nop.Api3.Data;
 using Grkouk.Nop.Api3.Dtos;
 using Grkouk.Nop.Api3.Filters;
 using Grkouk.Nop.Api3.Models;
+using GrKouk.Shared.Definitions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -14,6 +15,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 using Microsoft.Extensions.Hosting;
+using ProductListDto = Grkouk.Nop.Api3.Dtos.ProductListDto;
 
 namespace Grkouk.Nop.Api3.Controllers
 {
@@ -43,101 +45,73 @@ namespace Grkouk.Nop.Api3.Controllers
         }
 
         [HttpGet("ShopProductPictures")]
-        public async Task<ActionResult<IEnumerable<ProductPictureDto>>> GetShopProductPictures(int productId, string shopName)
+        public async Task<ActionResult<IEnumerable<ProductPictureDto>>> GetShopProductPictures(int productId, string shop)
         {
-            IQueryable<ProductPictureMapping> items;
-
-            if (string.IsNullOrEmpty(shopName))
+            if (!String.IsNullOrEmpty(shop) && Int32.TryParse(shop, out var shopId) && shopId > 0)
             {
-                return BadRequest();
-            }
-            switch (shopName)
-            {
-                case "AG":
-                    items = _angContext.ProductPictureMapping;
-                    break;
-                case "HM":
-                    items = _handContext.ProductPictureMapping;
-                    break;
-                case "TB":
-                    items = _braxiolakiContext.ProductPictureMapping;
-                    break;
-                default:
-                    return BadRequest();
-            }
-
-            var t = items.Where(p => p.ProductId == productId)
-                .Select(p => new ProductPictureDto
+                var flt = (ShopEnum)shopId;
+                IQueryable<ProductPictureMapping> items;
+                switch (flt)
                 {
-                    ProductId = p.ProductId,
-                    ProductName = p.Product.Name,
-                    SeoFilename = p.Picture.SeoFilename,
-                    VirtualPath = p.Picture.VirtualPath
-                });
-            var t1 = await t.ToListAsync();
+                    case ShopEnum.ShopAngelikasCreations:
+                        items = _angContext.ProductPictureMapping;
+                        break;
+                    case ShopEnum.ShopHandmadeCreations:
+                        items = _handContext.ProductPictureMapping;
+                        break;
+                    case ShopEnum.ShopToBraxiolaki:
+                        items = _braxiolakiContext.ProductPictureMapping;
+                        break;
+                    default:
+                        return BadRequest();
+                }
+                var t = items.Where(p => p.ProductId == productId)
+                    .Select(p => new ProductPictureDto
+                    {
+                        ProductId = p.ProductId,
+                        ProductName = p.Product.Name,
+                        SeoFilename = p.Picture.SeoFilename
 
-            return Ok(t1);
+                    });
+                var t1 = await t.ToListAsync();
+
+                return Ok(t1);
+            }
+            return BadRequest();
         }
-        [HttpGet("ShopProducts")]
-        public async Task<ActionResult<IEnumerable<Product>>> GetShopProducts(string shopName)
+        [HttpGet("FltShopProductsAutoCompleteList")]
+        public async Task<ActionResult<IEnumerable<ProductListDto>>> GetFltShopAutoCompleteProductsList(string shop)
         {
-            IQueryable<Product> itemsToReturn;
-           if (string.IsNullOrEmpty(shopName))
+            if (!String.IsNullOrEmpty(shop) && Int32.TryParse(shop, out var shopId) && shopId > 0)
             {
-                return BadRequest();
-            }
-            switch (shopName)
-            {
-                case "AG":
-                    itemsToReturn =  _angContext.Product; 
-                    break;
-                case "HM":
-                    itemsToReturn =  _handContext.Product;
-                    break;
-                case "TB":
-                    itemsToReturn =  _braxiolakiContext.Product;
-                    break;
-                default:
-                    return BadRequest();
-            }
-            
-            if (string.IsNullOrEmpty(shopName))
-            {
-                return BadRequest();
-            }
-            switch (shopName)
-            {
-                case "AG":
-                    itemsToReturn =  _angContext.Product; 
-                    break;
-                case "HM":
-                    itemsToReturn =  _handContext.Product;
-                    break;
-                case "TB":
-                    itemsToReturn =  _braxiolakiContext.Product;
-                    break;
-                default:
-                    return BadRequest();
-            }
-
-            if (itemsToReturn != null)
-            {
-                var items = await itemsToReturn.Select(p => new Product
+                var flt = (ShopEnum)shopId;
+                IQueryable<Product> items;
+                switch (flt)
                 {
-                    Id = p.Id,
-                    Name = p.Name,
+                    case ShopEnum.ShopAngelikasCreations:
+                        items = _angContext.Product;
+                        break;
+                    case ShopEnum.ShopHandmadeCreations:
+                        items = _handContext.Product;
+                        break;
+                    case ShopEnum.ShopToBraxiolaki:
+                        items = _braxiolakiContext.Product;
+                        break;
+                    default:
+                        return BadRequest();
+                }
+                var t = items.Select(p => new ProductListDto
+                    {
+                        Id=p.Id,
+                        Name = p.Name,
+                        Code = p.Sku
+                    });
+                var t1 = await t.ToListAsync();
 
-                    Sku = p.Sku,
-                    StockQuantity = p.StockQuantity,
-                    Price = p.Price,
-                    OldPrice = p.OldPrice,
-                    Published = p.Published,
-                    Deleted = p.Deleted
-
-                }).ToListAsync();
-                return Ok(items);
+                return Ok(t1);
             }
-            return Ok();
+
+            return Ok(new {});
         }
         [HttpGet("AngProducts")]
         public async Task<ActionResult<IEnumerable<Product>>> GetAngProduct()

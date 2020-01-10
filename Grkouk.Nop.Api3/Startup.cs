@@ -30,6 +30,11 @@ namespace Grkouk.Nop.Api3
         {
             services.AddDbContext<AngelikasDbContext>(options =>
                 options.UseSqlServer(Configuration.GetConnectionString("AngelikasDbConnection")));
+            services.AddDbContext<HandmadeDbContext>(options =>
+                options.UseSqlServer(Configuration.GetConnectionString("HandmadeDbConnection")));
+            services.AddDbContext<BraxiolakiContext>(options =>
+                options.UseSqlServer(Configuration.GetConnectionString("BraxiolakiDbConnection")));
+
             services.AddControllers();
         }
 

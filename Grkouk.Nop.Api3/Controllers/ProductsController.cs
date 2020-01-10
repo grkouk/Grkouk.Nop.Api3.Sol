@@ -6,8 +6,14 @@ using Grkouk.Nop.Api3.Data;
 using Grkouk.Nop.Api3.Dtos;
 using Grkouk.Nop.Api3.Filters;
 using Grkouk.Nop.Api3.Models;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Design;
+using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
+using Microsoft.Extensions.Hosting;
 
 namespace Grkouk.Nop.Api3.Controllers
 {
@@ -16,18 +22,132 @@ namespace Grkouk.Nop.Api3.Controllers
     [ApiController]
     public class ProductsController : ControllerBase
     {
-        private readonly AngelikasDbContext _context;
+        private readonly AngelikasDbContext _angContext;
+        private readonly HandmadeDbContext _handContext;
+        private readonly BraxiolakiContext _braxiolakiContext;
+      
 
-        public ProductsController(AngelikasDbContext context)
+        public ProductsController(AngelikasDbContext angContext,HandmadeDbContext handContext, BraxiolakiContext braxiolakiContext)
         {
-            _context = context;
+            _angContext = angContext;
+            _handContext = handContext;
+            _braxiolakiContext = braxiolakiContext;
+         
         }
 
         // GET: api/Products
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Product>>> GetProduct()
         {
-            return await _context.Product.ToListAsync();
+            return await _angContext.Product.ToListAsync();
+        }
+
+        [HttpGet("ShopProductPictures")]
+        public async Task<ActionResult<IEnumerable<ProductPictureDto>>> GetShopProductPictures(int productId, string shopName)
+        {
+            IQueryable<ProductPictureMapping> items;
+
+            if (string.IsNullOrEmpty(shopName))
+            {
+                return BadRequest();
+            }
+            switch (shopName)
+            {
+                case "AG":
+                    items = _angContext.ProductPictureMapping;
+                    break;
+                case "HM":
+                    items = _handContext.ProductPictureMapping;
+                    break;
+                case "TB":
+                    items = _braxiolakiContext.ProductPictureMapping;
+                    break;
+                default:
+                    return BadRequest();
+            }
+
+            var t = items.Where(p => p.ProductId == productId)
+                .Select(p => new ProductPictureDto
+                {
+                    ProductId = p.ProductId,
+                    ProductName = p.Product.Name,
+                    SeoFilename = p.Picture.SeoFilename,
+                    VirtualPath = p.Picture.VirtualPath
+                });
+            var t1 = await t.ToListAsync();
+
+            return Ok(t1);
+        }
+        [HttpGet("ShopProducts")]
+        public async Task<ActionResult<IEnumerable<Product>>> GetShopProducts(string shopName)
+        {
+            IQueryable<Product> itemsToReturn;
+           if (string.IsNullOrEmpty(shopName))
+            {
+                return BadRequest();
+            }
+            switch (shopName)
+            {
+                case "AG":
+                    itemsToReturn =  _angContext.Product; 
+                    break;
+                case "HM":
+                    itemsToReturn =  _handContext.Product;
+                    break;
+                case "TB":
+                    itemsToReturn =  _braxiolakiContext.Product;
+                    break;
+                default:
+                    return BadRequest();
+            }
+            
+            if (string.IsNullOrEmpty(shopName))
+            {
+                return BadRequest();
+            }
+            switch (shopName)
+            {
+                case "AG":
+                    itemsToReturn =  _angContext.Product; 
+                    break;
+                case "HM":
+                    itemsToReturn =  _handContext.Product;
+                    break;
+                case "TB":
+                    itemsToReturn =  _braxiolakiContext.Product;
+                    break;
+                default:
+                    return BadRequest();
+            }
+
+            if (itemsToReturn != null)
+            {
+                var items = await itemsToReturn.Select(p => new Product
+                {
+                    Id = p.Id,
+                    Name = p.Name,
+
+                    Sku = p.Sku,
+                    StockQuantity = p.StockQuantity,
+                    Price = p.Price,
+                    OldPrice = p.OldPrice,
+                    Published = p.Published,
+                    Deleted = p.Deleted
+
+                }).ToListAsync();
+                return Ok(items);
+            }
+            return Ok();
+        }
+        [HttpGet("AngProducts")]
+        public async Task<ActionResult<IEnumerable<Product>>> GetAngProduct()
+        {
+            return await _angContext.Product.ToListAsync();
+        }
+        [HttpGet("HandProducts")]
+        public async Task<ActionResult<IEnumerable<Product>>> GetHandProduct()
+        {
+            return await _handContext.Product.ToListAsync();
         }
         [HttpGet("ProductCodes")]
         public async Task<ActionResult<IEnumerable<CodeDto>>> GetProductCodes(string codeBase)
@@ -35,7 +155,7 @@ namespace Grkouk.Nop.Api3.Controllers
             List<CodeDto> items;
             if (string.IsNullOrEmpty(codeBase))
             {
-                items = await _context.Product.OrderByDescending(p => p.Sku)
+                items = await _angContext.Product.OrderByDescending(p => p.Sku)
                     .Select(t => new CodeDto
                     {
                         Code = t.Sku
@@ -43,7 +163,7 @@ namespace Grkouk.Nop.Api3.Controllers
             }
             else
             {
-                items = await _context.Product.Where(p => p.Sku.Contains(codeBase))
+                items = await _angContext.Product.Where(p => p.Sku.Contains(codeBase))
                     .OrderByDescending(p => p.Sku)
                     .Select(t => new CodeDto
                     {
@@ -56,7 +176,7 @@ namespace Grkouk.Nop.Api3.Controllers
         [HttpGet("Codes")]
         public async Task<ActionResult<IEnumerable<ProductListDto>>> GetProductsByCode(string codeBase)
         {
-            var items = _context.Product
+            var items = _angContext.Product
                 .Select(p => new ProductListDto
                 {
                     Id = p.Id,
@@ -76,7 +196,7 @@ namespace Grkouk.Nop.Api3.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<Product>> GetProduct(int id)
         {
-            var product = await _context.Product.FindAsync(id);
+            var product = await _angContext.Product.FindAsync(id);
 
             if (product == null)
             {
@@ -95,11 +215,11 @@ namespace Grkouk.Nop.Api3.Controllers
                 return BadRequest();
             }
 
-            _context.Entry(product).State = EntityState.Modified;
+            _angContext.Entry(product).State = EntityState.Modified;
 
             try
             {
-                await _context.SaveChangesAsync();
+                await _angContext.SaveChangesAsync();
             }
             catch (DbUpdateConcurrencyException)
             {
@@ -120,8 +240,8 @@ namespace Grkouk.Nop.Api3.Controllers
         [HttpPost]
         public async Task<ActionResult<Product>> PostProduct(Product product)
         {
-            _context.Product.Add(product);
-            await _context.SaveChangesAsync();
+            _angContext.Product.Add(product);
+            await _angContext.SaveChangesAsync();
 
             return CreatedAtAction("GetProduct", new { id = product.Id }, product);
         }
@@ -130,21 +250,21 @@ namespace Grkouk.Nop.Api3.Controllers
         [HttpDelete("{id}")]
         public async Task<ActionResult<Product>> DeleteProduct(int id)
         {
-            var product = await _context.Product.FindAsync(id);
+            var product = await _angContext.Product.FindAsync(id);
             if (product == null)
             {
                 return NotFound();
             }
 
-            _context.Product.Remove(product);
-            await _context.SaveChangesAsync();
+            _angContext.Product.Remove(product);
+            await _angContext.SaveChangesAsync();
 
             return product;
         }
 
         private bool ProductExists(int id)
         {
-            return _context.Product.Any(e => e.Id == id);
+            return _angContext.Product.Any(e => e.Id == id);
         }
     }
 }

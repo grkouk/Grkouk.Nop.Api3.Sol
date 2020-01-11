@@ -27,14 +27,14 @@ namespace Grkouk.Nop.Api3.Controllers
         private readonly AngelikasDbContext _angContext;
         private readonly HandmadeDbContext _handContext;
         private readonly BraxiolakiContext _braxiolakiContext;
-      
 
-        public ProductsController(AngelikasDbContext angContext,HandmadeDbContext handContext, BraxiolakiContext braxiolakiContext)
+
+        public ProductsController(AngelikasDbContext angContext, HandmadeDbContext handContext, BraxiolakiContext braxiolakiContext)
         {
             _angContext = angContext;
             _handContext = handContext;
             _braxiolakiContext = braxiolakiContext;
-         
+
         }
 
         // GET: api/Products
@@ -44,36 +44,55 @@ namespace Grkouk.Nop.Api3.Controllers
             return await _angContext.Product.ToListAsync();
         }
 
+        private string GetProductImageUrl(int pictureId, string seoFilename, string mimeType,string urlBase)
+        {
+            var a1 = pictureId.ToString("D7");
+            var a2 = seoFilename;
+            var a3 = "jpeg";
+            return $"{urlBase}{a1}_{a2}.{a3}";
+        }
         [HttpGet("ShopProductPictures")]
-        public async Task<ActionResult<IEnumerable<ProductPictureDto>>> GetShopProductPictures(int productId, string shop)
+        public async Task<ActionResult<IEnumerable<ProductListDto>>> GetShopProductPictures(int productId, string shop)
         {
             if (!String.IsNullOrEmpty(shop) && Int32.TryParse(shop, out var shopId) && shopId > 0)
             {
+                var urlBase = "";
                 var flt = (ShopEnum)shopId;
                 IQueryable<ProductPictureMapping> items;
                 switch (flt)
                 {
                     case ShopEnum.ShopAngelikasCreations:
+                        urlBase = "https://angelikascreations.com/images/thumbs/000/";
                         items = _angContext.ProductPictureMapping;
                         break;
                     case ShopEnum.ShopHandmadeCreations:
+                        urlBase = "https://handmade-creations.com/images/thumbs/000/";
                         items = _handContext.ProductPictureMapping;
                         break;
                     case ShopEnum.ShopToBraxiolaki:
+                        urlBase = "https://tobraxiolaki.gr/images/thumbs/000/";
                         items = _braxiolakiContext.ProductPictureMapping;
                         break;
                     default:
                         return BadRequest();
                 }
-                var t = items.Where(p => p.ProductId == productId)
+                var t = await items.Where(p => p.ProductId == productId)
                     .Select(p => new ProductPictureDto
                     {
                         ProductId = p.ProductId,
+                        PictureId = p.PictureId,
                         ProductName = p.Product.Name,
-                        SeoFilename = p.Picture.SeoFilename
+                        SeoFilename = p.Picture.SeoFilename,
+                        MimeType = p.Picture.MimeType
 
-                    });
-                var t1 = await t.ToListAsync();
+                    }).ToListAsync();
+                var t1 =  t.Select(p => new ProductListDto
+                {
+                    Id = p.ProductId,
+                    Name = p.ProductName,
+                    
+                    ImageUrl = GetProductImageUrl(p.PictureId, p.SeoFilename, p.MimeType,urlBase)
+                }).ToList();
 
                 return Ok(t1);
             }
@@ -101,17 +120,17 @@ namespace Grkouk.Nop.Api3.Controllers
                         return BadRequest();
                 }
                 var t = items.Select(p => new ProductListDto
-                    {
-                        Id=p.Id,
-                        Name = p.Name,
-                        Code = p.Sku
-                    });
+                {
+                    Id = p.Id,
+                    Name = p.Name,
+                    Code = p.Sku
+                });
                 var t1 = await t.ToListAsync();
 
                 return Ok(t1);
             }
 
-            return Ok(new {});
+            return Ok(new { });
         }
         [HttpGet("AngProducts")]
         public async Task<ActionResult<IEnumerable<Product>>> GetAngProduct()

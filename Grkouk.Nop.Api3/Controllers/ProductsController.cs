@@ -81,7 +81,7 @@ namespace Grkouk.Nop.Api3.Controllers
                     {
                         ProductId = p.ProductId,
                         PictureId = p.PictureId,
-                        ProductName = p.Product.Name,
+                        ProductName = $"{{{p.Product.Sku}}} {p.Product.Name}",
                         SeoFilename = p.Picture.SeoFilename,
                         MimeType = p.Picture.MimeType
 
@@ -123,6 +123,7 @@ namespace Grkouk.Nop.Api3.Controllers
                 {
                     Id = p.Id,
                     Name = p.Name,
+                    NameCombined = $"{{{p.Sku}}} {p.Name}",
                     Code = p.Sku
                 });
                 var t1 = await t.ToListAsync();

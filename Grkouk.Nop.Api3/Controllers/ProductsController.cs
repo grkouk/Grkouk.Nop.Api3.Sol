@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Grkouk.Nop.Api3.Data;
-using Grkouk.Nop.Api3.Dtos;
+using GrKouk.Shared.Mobile.Dtos;
 using Grkouk.Nop.Api3.Filters;
 using Grkouk.Nop.Api3.Models;
 using GrKouk.Shared.Definitions;
@@ -15,7 +15,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 using Microsoft.Extensions.Hosting;
-using ProductListDto = Grkouk.Nop.Api3.Dtos.ProductListDto;
+using ProductListDto = GrKouk.Shared.Mobile.Dtos.ProductListDto;
 
 namespace Grkouk.Nop.Api3.Controllers
 {

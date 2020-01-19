@@ -6,15 +6,10 @@ using Grkouk.Nop.Api3.Data;
 using GrKouk.Shared.Mobile.Dtos;
 using Grkouk.Nop.Api3.Filters;
 using Grkouk.Nop.Api3.Models;
+using GrKouk.Shared.Core;
 using GrKouk.Shared.Definitions;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Design;
-using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
-using Microsoft.Extensions.Hosting;
 using ProductListDto = GrKouk.Shared.Mobile.Dtos.ProductListDto;
 
 namespace Grkouk.Nop.Api3.Controllers
@@ -95,6 +90,40 @@ namespace Grkouk.Nop.Api3.Controllers
                 }).ToList();
 
                 return Ok(t1);
+            }
+            return BadRequest();
+        }
+        [HttpGet("ShopProductSlugs")]
+        public async Task<ActionResult<IEnumerable<ListItemDto>>> GetShopProductSlugs(int productId, string shop)
+        {
+            if (!String.IsNullOrEmpty(shop) && Int32.TryParse(shop, out var shopId) && shopId > 0)
+            {
+                var flt = (ShopEnum)shopId;
+                IQueryable<UrlRecord> items;
+                switch (flt)
+                {
+                    case ShopEnum.ShopAngelikasCreations:
+                        items = _angContext.UrlRecord;
+                        break;
+                    case ShopEnum.ShopHandmadeCreations:
+                        items = _handContext.UrlRecord;
+                        break;
+                    case ShopEnum.ShopToBraxiolaki:
+                        items = _braxiolakiContext.UrlRecord;
+                        break;
+                    default:
+                        return BadRequest();
+                }
+                var t = await items.Where(p => p.EntityId == productId && p.EntityName=="Product" && p.IsActive &&p.LanguageId==0)
+                    .Select(p => new ListItemDto
+                    {
+                        ItemId = p.Id,
+                        ItemName = p.Slug,
+                        ItemCode = p.Slug
+
+                    }).ToListAsync();
+
+                return Ok(t);
             }
             return BadRequest();
         }

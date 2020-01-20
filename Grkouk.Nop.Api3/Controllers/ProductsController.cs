@@ -93,6 +93,40 @@ namespace Grkouk.Nop.Api3.Controllers
             }
             return BadRequest();
         }
+        [HttpGet("ShopProductPrimarySlug")]
+        public async Task<ActionResult<ListItemDto>> GetShopProductPrimarySlug(int productId, string shop)
+        {
+            if (!String.IsNullOrEmpty(shop) && Int32.TryParse(shop, out var shopId) && shopId > 0)
+            {
+                var flt = (ShopEnum)shopId;
+                IQueryable<UrlRecord> items;
+                switch (flt)
+                {
+                    case ShopEnum.ShopAngelikasCreations:
+                        items = _angContext.UrlRecord;
+                        break;
+                    case ShopEnum.ShopHandmadeCreations:
+                        items = _handContext.UrlRecord;
+                        break;
+                    case ShopEnum.ShopToBraxiolaki:
+                        items = _braxiolakiContext.UrlRecord;
+                        break;
+                    default:
+                        return BadRequest();
+                }
+                var t = await items.Where(p => p.EntityId == productId && p.EntityName == "Product" && p.IsActive && p.LanguageId == 0)
+                    .Select(p => new ListItemDto
+                    {
+                        ItemId = p.Id,
+                        ItemName = p.Slug,
+                        ItemCode = p.Slug
+
+                    }).SingleOrDefaultAsync();
+
+                return Ok(t);
+            }
+            return BadRequest();
+        }
         [HttpGet("ShopProductSlugs")]
         public async Task<ActionResult<IEnumerable<ListItemDto>>> GetShopProductSlugs(int productId, string shop)
         {

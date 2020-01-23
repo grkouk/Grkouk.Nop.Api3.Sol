@@ -1,15 +1,21 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
+using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 using Grkouk.Nop.Api3.Data;
 using GrKouk.Shared.Mobile.Dtos;
 using Grkouk.Nop.Api3.Filters;
+using Grkouk.Nop.Api3.Helpers;
 using Grkouk.Nop.Api3.Models;
 using GrKouk.Shared.Core;
 using GrKouk.Shared.Definitions;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Query.Internal;
 using ProductListDto = GrKouk.Shared.Mobile.Dtos.ProductListDto;
 
 namespace Grkouk.Nop.Api3.Controllers
@@ -39,7 +45,7 @@ namespace Grkouk.Nop.Api3.Controllers
             return await _angContext.Product.ToListAsync();
         }
 
-        private string GetProductImageUrl(int pictureId, string seoFilename, string mimeType,string urlBase)
+        private string GetProductImageUrl(int pictureId, string seoFilename, string mimeType, string urlBase)
         {
             var a1 = pictureId.ToString("D7");
             var a2 = seoFilename;
@@ -81,12 +87,12 @@ namespace Grkouk.Nop.Api3.Controllers
                         MimeType = p.Picture.MimeType
 
                     }).ToListAsync();
-                var t1 =  t.Select(p => new ProductListDto
+                var t1 = t.Select(p => new ProductListDto
                 {
                     Id = p.ProductId,
                     Name = p.ProductName,
-                    
-                    ImageUrl = GetProductImageUrl(p.PictureId, p.SeoFilename, p.MimeType,urlBase)
+
+                    ImageUrl = GetProductImageUrl(p.PictureId, p.SeoFilename, p.MimeType, urlBase)
                 }).ToList();
 
                 return Ok(t1);
@@ -148,7 +154,7 @@ namespace Grkouk.Nop.Api3.Controllers
                     default:
                         return BadRequest();
                 }
-                var t = await items.Where(p => p.EntityId == productId && p.EntityName=="Product" && p.IsActive &&p.LanguageId==0)
+                var t = await items.Where(p => p.EntityId == productId && p.EntityName == "Product" && p.IsActive && p.LanguageId == 0)
                     .Select(p => new ListItemDto
                     {
                         ItemId = p.Id,
@@ -209,10 +215,22 @@ namespace Grkouk.Nop.Api3.Controllers
         [HttpGet("ProductCodes")]
         public async Task<ActionResult<IEnumerable<CodeDto>>> GetProductCodes(string codeBase)
         {
-            List<CodeDto> items;
+            List<CodeDto> items1;
+            List<CodeDto> items2;
+            List<CodeDto> items3;
             if (string.IsNullOrEmpty(codeBase))
             {
-                items = await _angContext.Product.OrderByDescending(p => p.Sku)
+                items1 = await _angContext.Product.OrderByDescending(p => p.Sku)
+                    .Select(t => new CodeDto
+                    {
+                        Code = t.Sku
+                    }).ToListAsync();
+                items2 = await _handContext.Product.OrderByDescending(p => p.Sku)
+                    .Select(t => new CodeDto
+                    {
+                        Code = t.Sku
+                    }).ToListAsync();
+                items3 = await _braxiolakiContext.Product.OrderByDescending(p => p.Sku)
                     .Select(t => new CodeDto
                     {
                         Code = t.Sku
@@ -220,7 +238,19 @@ namespace Grkouk.Nop.Api3.Controllers
             }
             else
             {
-                items = await _angContext.Product.Where(p => p.Sku.Contains(codeBase))
+                items1 = await _angContext.Product.Where(p => p.Sku.Contains(codeBase))
+                    .OrderByDescending(p => p.Sku)
+                    .Select(t => new CodeDto
+                    {
+                        Code = t.Sku
+                    }).ToListAsync();
+                items2 = await _handContext.Product.Where(p => p.Sku.Contains(codeBase))
+                    .OrderByDescending(p => p.Sku)
+                    .Select(t => new CodeDto
+                    {
+                        Code = t.Sku
+                    }).ToListAsync();
+                items3 = await _braxiolakiContext.Product.Where(p => p.Sku.Contains(codeBase))
                     .OrderByDescending(p => p.Sku)
                     .Select(t => new CodeDto
                     {
@@ -228,25 +258,53 @@ namespace Grkouk.Nop.Api3.Controllers
                     }).ToListAsync();
             }
 
-            return Ok(items);
+            var cmbList = new HashSet<CodeDto>(items1, new CodeDtoComparer());
+            cmbList.UnionWith(items2);
+            cmbList.UnionWith(items3);
+            //var rt = cmbList.ToList();
+
+
+            return Ok(cmbList);
         }
         [HttpGet("Codes")]
         public async Task<ActionResult<IEnumerable<ProductListDto>>> GetProductsByCode(string codeBase)
         {
-            var items = _angContext.Product
+            Debug.WriteLine($"*********Inside GetProductsByCode with codeBase={codeBase} ");
+            //return StatusCode(StatusCodes.Status500InternalServerError);
+            var items1 = _angContext.Product
+                 .Select(p => new ProductListDto
+                 {
+                     Id = p.Id,
+                     Name = p.Name,
+                     Code = p.Sku
+                 });
+            var items2 = _handContext.Product
                 .Select(p => new ProductListDto
                 {
                     Id = p.Id,
                     Name = p.Name,
                     Code = p.Sku
                 });
-
+            var items3 = _braxiolakiContext.Product
+                   .Select(p => new ProductListDto
+                   {
+                       Id = p.Id,
+                       Name = p.Name,
+                       Code = p.Sku
+                   });
+           
             if (!String.IsNullOrEmpty(codeBase))
             {
-                items = items.Where(p => p.Code.Contains(codeBase));
+                items1 = items1.Where(p => p.Code.Contains(codeBase)).OrderByDescending(p => p.Code);
+                items2 = items2.Where(p => p.Code.Contains(codeBase)).OrderByDescending(p => p.Code);
+                items3 = items3.Where(p => p.Code.Contains(codeBase)).OrderByDescending(p => p.Code);
             }
-            var listItems = await items.OrderByDescending(p => p.Code).ToListAsync();
-
+            var listItems1 = await items1.ToListAsync();
+            var listItems2 = await items2.ToListAsync();
+            var listItems3 = await items3.ToListAsync();
+            var listItems = new HashSet<ProductListDto>( listItems1, new ProductListDtoComparer());
+            listItems.UnionWith(listItems2);
+            listItems.UnionWith(listItems3);
             return Ok(listItems);
         }
         // GET: api/Products/5

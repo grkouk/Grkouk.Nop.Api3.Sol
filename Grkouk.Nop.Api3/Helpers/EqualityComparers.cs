@@ -30,5 +30,16 @@ namespace Grkouk.Nop.Api3.Helpers
             return p.Code.GetHashCode();
         }
     }
+    public class ProductCodeLookupDtoComparer : IEqualityComparer<ProductCodeLookupDto>
+    {
+        public bool Equals(ProductCodeLookupDto p1, ProductCodeLookupDto p2)
+        {
+            return (p1.Code == p2.Code) && (p1.ShopName==p2.ShopName);
+        }
 
+        public int GetHashCode(ProductCodeLookupDto p)
+        {
+            return p.Code.GetHashCode();
+        }
+    }
 }

@@ -267,29 +267,32 @@ namespace Grkouk.Nop.Api3.Controllers
             return Ok(cmbList);
         }
         [HttpGet("Codes")]
-        public async Task<ActionResult<IEnumerable<ProductListDto>>> GetProductsByCode(string codeBase)
+        public async Task<ActionResult<IEnumerable<ProductCodeLookupDto>>> GetProductsByCode(string codeBase)
         {
             Debug.WriteLine($"*********Inside GetProductsByCode with codeBase={codeBase} ");
             //return StatusCode(StatusCodes.Status500InternalServerError);
             var items1 = _angContext.Product
-                 .Select(p => new ProductListDto
+                 .Select(p => new ProductCodeLookupDto
                  {
                      Id = p.Id,
                      Name = p.Name,
+                     ShopName = "AngelikasCreations",
                      Code = p.Sku
                  });
             var items2 = _handContext.Product
-                .Select(p => new ProductListDto
+                .Select(p => new ProductCodeLookupDto
                 {
                     Id = p.Id,
                     Name = p.Name,
+                    ShopName = "TheArtOfHandmade",
                     Code = p.Sku
                 });
             var items3 = _braxiolakiContext.Product
-                   .Select(p => new ProductListDto
+                   .Select(p => new ProductCodeLookupDto
                    {
                        Id = p.Id,
                        Name = p.Name,
+                       ShopName = "ToBraxiolaki",
                        Code = p.Sku
                    });
            
@@ -302,9 +305,31 @@ namespace Grkouk.Nop.Api3.Controllers
             var listItems1 = await items1.ToListAsync();
             var listItems2 = await items2.ToListAsync();
             var listItems3 = await items3.ToListAsync();
-            var listItems = new HashSet<ProductListDto>( listItems1, new ProductListDtoComparer());
-            listItems.UnionWith(listItems2);
-            listItems.UnionWith(listItems3);
+
+            //var listItems = new HashSet<ProductCodeLookupDto>( listItems1, new ProductCodeLookupDtoComparer());
+            //listItems.UnionWith(listItems2);
+            //listItems.UnionWith(listItems3);
+            var listItemsTmp = listItems1.Concat(listItems2)
+                .ToLookup(p => p.Code)
+                .Select(g => g.Aggregate((p1, p2) => new ProductCodeLookupDto
+                {
+                    Name = p1.Name,
+                    Code = p1.Code,
+                    NameCombined = p1.NameCombined,
+                    ImageUrl = p1.ImageUrl,
+                    ShopName = $"{p1.ShopName},{p2.ShopName}"
+                }));
+            var listItems = listItemsTmp.Concat(listItems3)
+                .ToLookup(p => p.Code)
+                .Select(g => g.Aggregate((p1, p2) => new ProductCodeLookupDto
+                {
+                    Name = p1.Name,
+                    Code = p1.Code,
+                    NameCombined = p1.NameCombined,
+                    ImageUrl = p1.ImageUrl,
+                    ShopName = $"{p1.ShopName},{p2.ShopName}"
+                })).ToList();
+
             return Ok(listItems);
         }
         // GET: api/Products/5

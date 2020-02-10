@@ -8,7 +8,7 @@
   <ItemGroup>
     <PackageReference Include="GrKouk.Shared.Core" Version="1.0.0" />
     <PackageReference Include="GrKouk.Shared.Definitions" Version="1.0.0" />
-    <PackageReference Include="GrKouk.Shared.Mobile.Dtos" Version="1.1.1" />
+    <PackageReference Include="GrKouk.Shared.Mobile.Dtos" Version="1.1.2" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="3.1.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="3.1.0">
       <PrivateAssets>all</PrivateAssets>

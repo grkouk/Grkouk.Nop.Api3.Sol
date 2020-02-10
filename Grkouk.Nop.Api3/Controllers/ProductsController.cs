@@ -52,6 +52,43 @@ namespace Grkouk.Nop.Api3.Controllers
             var a3 = "jpeg";
             return $"{urlBase}{a1}_{a2}.{a3}";
         }
+        [HttpGet("ShopProductAttrCombinations")]
+        public async Task<ActionResult<IEnumerable<ProductAttrCombinationDto>>> GetShopProductAttrCombinations(int productId, int shopId)
+        {
+            if (   shopId > 0)
+            {
+                var urlBase = "";
+                var flt = (ShopEnum)shopId;
+                IQueryable<ProductAttributeCombination> items;
+                switch (flt)
+                {
+                    case ShopEnum.ShopAngelikasCreations:
+                        items = _angContext.ProductAttributeCombination.Where(p=>p.ProductId==productId);
+                        break;
+                    case ShopEnum.ShopHandmadeCreations:
+                        items = _handContext.ProductAttributeCombination.Where(p => p.ProductId == productId);
+                        break;
+                    case ShopEnum.ShopToBraxiolaki:
+                        items = _braxiolakiContext.ProductAttributeCombination.Where(p => p.ProductId == productId);
+                        break;
+                    default:
+                        return BadRequest();
+                }
+                var t = await items.Where(p => p.ProductId == productId)
+                    .Select(p => new ProductAttrCombinationDto
+                    {
+                        Id=p.Id,
+                        ProductId = p.ProductId,
+                        ProductCode = p.Sku,
+                        StockQuantity = p.StockQuantity
+
+                    }).ToListAsync();
+               
+
+                return Ok(t);
+            }
+            return BadRequest();
+        }
         [HttpGet("ShopProductPictures")]
         public async Task<ActionResult<IEnumerable<ProductListDto>>> GetShopProductPictures(int productId, string shop)
         {

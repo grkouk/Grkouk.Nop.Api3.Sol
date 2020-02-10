@@ -52,6 +52,56 @@ namespace Grkouk.Nop.Api3.Controllers
             var a3 = "jpeg";
             return $"{urlBase}{a1}_{a2}.{a3}";
         }
+
+        [HttpPost("DeleteShopProductAttrCombinations")]
+        public async Task<IActionResult> DeleteShopProductAttrCombinations(int shopId, int productId)
+        {
+            if (shopId > 0)
+            {
+                BaseNopContext transContext;
+                int deletedCount = 0;
+                int toDeleteCount = 0;
+                var flt = (ShopEnum)shopId;
+                
+                switch (flt)
+                {
+                    case ShopEnum.ShopAngelikasCreations:
+                        transContext = _angContext;
+                        
+                        break;
+                    case ShopEnum.ShopHandmadeCreations:
+                        transContext = _handContext;
+                        break;
+                    case ShopEnum.ShopToBraxiolaki:
+                        transContext = _braxiolakiContext;
+                        break;
+                    default:
+                        return BadRequest();
+                }
+
+                using (var transaction = transContext.Database.BeginTransaction())
+                {
+                    var t =await transContext.ProductAttributeCombination.Where(p => p.ProductId == productId).ToListAsync();
+                    try
+                    {
+                        transContext.RemoveRange(t);
+                         toDeleteCount = transContext.ChangeTracker.Entries().Count(x => x.State == EntityState.Deleted);
+                    }
+                    catch (Exception e)
+                    {
+                        transaction.Rollback();
+                        Console.WriteLine(e);
+                        
+                    }
+                    
+                }
+                return Ok(new {ToDelete=toDeleteCount,DeletedCount=deletedCount});
+            }
+            return BadRequest();
+
+        }
+
+
         [HttpGet("ShopProductAttrCombinations")]
         public async Task<ActionResult<IEnumerable<ProductAttrCombinationDto>>> GetShopProductAttrCombinations(int productId, int shopId)
         {
@@ -83,8 +133,6 @@ namespace Grkouk.Nop.Api3.Controllers
                         StockQuantity = p.StockQuantity
 
                     }).ToListAsync();
-               
-
                 return Ok(t);
             }
             return BadRequest();

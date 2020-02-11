@@ -59,15 +59,67 @@ namespace Grkouk.Nop.Api3.Controllers
             if (shopId > 0)
             {
                 BaseNopContext transContext;
-                int deletedCount = 0;
-                int toDeleteCount = 0;
+                int affectedCount = 0;
+                int toAffectCount = 0;
                 var flt = (ShopEnum)shopId;
-                
+
                 switch (flt)
                 {
                     case ShopEnum.ShopAngelikasCreations:
                         transContext = _angContext;
-                        
+
+                        break;
+                    case ShopEnum.ShopHandmadeCreations:
+                        transContext = _handContext;
+                        break;
+                    case ShopEnum.ShopToBraxiolaki:
+                        transContext = _braxiolakiContext;
+                        break;
+                    default:
+                        return BadRequest();
+                }
+                
+                using (var transaction = transContext.Database.BeginTransaction())
+                {
+                    var t = await transContext.ProductAttributeCombination.Where(p => p.ProductId == productId).ToListAsync();
+                    if (t?.Count>0)
+                    {
+                        try
+                        {
+                            transContext.RemoveRange(t);
+                            toAffectCount = transContext.ChangeTracker.Entries().Count(x => x.State == EntityState.Deleted);
+                            affectedCount=await transContext.SaveChangesAsync();
+                            transaction.Commit();
+                            return Ok(new { toAffectCount = toAffectCount, affectedCount = affectedCount });
+                        }
+                        catch (Exception e)
+                        {
+                            transaction.Rollback();
+                            Console.WriteLine(e);
+
+                        }
+                    }
+
+                }
+                return Ok(new { toAffectCount = toAffectCount, affectedCount = affectedCount });
+            }
+            return BadRequest();
+        }
+        [HttpPost("UpdateShopProductAttrCombStock")]
+        public async Task<IActionResult> UpdateShopProductAttrCombinationStock(int shopId, int productId, int stockQuantity)
+        {
+            if (shopId > 0)
+            {
+                BaseNopContext transContext;
+                int affectedCount = 0;
+                int toAffectCount = 0;
+                var flt = (ShopEnum)shopId;
+
+                switch (flt)
+                {
+                    case ShopEnum.ShopAngelikasCreations:
+                        transContext = _angContext;
+
                         break;
                     case ShopEnum.ShopHandmadeCreations:
                         transContext = _handContext;
@@ -81,31 +133,38 @@ namespace Grkouk.Nop.Api3.Controllers
 
                 using (var transaction = transContext.Database.BeginTransaction())
                 {
-                    var t =await transContext.ProductAttributeCombination.Where(p => p.ProductId == productId).ToListAsync();
-                    try
+                    var t = await transContext.ProductAttributeCombination.Where(p => p.ProductId == productId).ToListAsync();
+                    if (t?.Count > 0)
                     {
-                        transContext.RemoveRange(t);
-                         toDeleteCount = transContext.ChangeTracker.Entries().Count(x => x.State == EntityState.Deleted);
+                        try
+                        {
+                            foreach (var item in t)
+                            {
+                                item.StockQuantity = stockQuantity;
+                            }
+                            toAffectCount = transContext.ChangeTracker.Entries().Count(x => x.State == EntityState.Modified);
+                            affectedCount = await transContext.SaveChangesAsync();
+                            transaction.Commit();
+                            return Ok(new { toAffectCount = toAffectCount, affectedCount = affectedCount });
+                        }
+                        catch (Exception e)
+                        {
+                            transaction.Rollback();
+                            Console.WriteLine(e);
+
+                        }
                     }
-                    catch (Exception e)
-                    {
-                        transaction.Rollback();
-                        Console.WriteLine(e);
-                        
-                    }
-                    
+
                 }
-                return Ok(new {ToDelete=toDeleteCount,DeletedCount=deletedCount});
+                return Ok(new { toAffectCount = toAffectCount, affectedCount = affectedCount });
             }
             return BadRequest();
-
         }
-
 
         [HttpGet("ShopProductAttrCombinations")]
         public async Task<ActionResult<IEnumerable<ProductAttrCombinationDto>>> GetShopProductAttrCombinations(int productId, int shopId)
         {
-            if (   shopId > 0)
+            if (shopId > 0)
             {
                 var urlBase = "";
                 var flt = (ShopEnum)shopId;
@@ -113,7 +172,7 @@ namespace Grkouk.Nop.Api3.Controllers
                 switch (flt)
                 {
                     case ShopEnum.ShopAngelikasCreations:
-                        items = _angContext.ProductAttributeCombination.Where(p=>p.ProductId==productId);
+                        items = _angContext.ProductAttributeCombination.Where(p => p.ProductId == productId);
                         break;
                     case ShopEnum.ShopHandmadeCreations:
                         items = _handContext.ProductAttributeCombination.Where(p => p.ProductId == productId);
@@ -127,7 +186,7 @@ namespace Grkouk.Nop.Api3.Controllers
                 var t = await items.Where(p => p.ProductId == productId)
                     .Select(p => new ProductAttrCombinationDto
                     {
-                        Id=p.Id,
+                        Id = p.Id,
                         ProductId = p.ProductId,
                         ProductCode = p.Sku,
                         StockQuantity = p.StockQuantity
@@ -380,7 +439,7 @@ namespace Grkouk.Nop.Api3.Controllers
                        ShopName = "ToBraxiolaki",
                        Code = p.Sku
                    });
-           
+
             if (!String.IsNullOrEmpty(codeBase))
             {
                 items1 = items1.Where(p => p.Code.Contains(codeBase)).OrderByDescending(p => p.Code);

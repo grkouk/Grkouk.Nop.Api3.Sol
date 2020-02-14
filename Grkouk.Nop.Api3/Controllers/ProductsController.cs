@@ -160,7 +160,88 @@ namespace Grkouk.Nop.Api3.Controllers
             }
             return BadRequest();
         }
+        [HttpPost("UpdateShopProductAttrCombSku")]
+        public async Task<IActionResult> UpdateShopProductAttrCombinationSku(int shopId, int productId, string  skuToUse)
+        {
+            if (shopId > 0)
+            {
+                BaseNopContext transContext;
+                int affectedCount = 0;
+                int toAffectCount = 0;
+                var flt = (ShopEnum)shopId;
 
+                switch (flt)
+                {
+                    case ShopEnum.ShopAngelikasCreations:
+                        transContext = _angContext;
+
+                        break;
+                    case ShopEnum.ShopHandmadeCreations:
+                        transContext = _handContext;
+                        break;
+                    case ShopEnum.ShopToBraxiolaki:
+                        transContext = _braxiolakiContext;
+                        break;
+                    default:
+                        return BadRequest();
+                }
+                //Get product sku
+                string skuBase = "";
+                var product =await transContext.Product.FirstOrDefaultAsync(p => p.Id == productId);
+                if (product == null)
+                {
+                    return BadRequest(new { toAffectCount = 0, affectedCount = 0,message="Base product not found!" });
+                }
+
+                if (!string.IsNullOrEmpty( product.Sku))
+                {
+                    skuBase = product.Sku;
+                }
+                //parameter takes precedence from product sku
+                if (!string.IsNullOrEmpty( skuToUse))
+                {
+                    skuBase = skuToUse;
+                }
+                if (string.IsNullOrEmpty(skuBase))
+                {
+                    return BadRequest(new { toAffectCount = 0, affectedCount = 0, message = "No Sku to use!" });
+                }
+                using (var transaction = transContext.Database.BeginTransaction())
+                {
+                    var t = await transContext.ProductAttributeCombination.Where(p => p.ProductId == productId).ToListAsync();
+                    if (t?.Count > 0)
+                    {
+                        try
+                        {
+                            int i = 0;
+                            foreach (var item in t)
+                            {
+                                i++;
+                                item.Sku = $"{skuBase}-{i.ToString()}";
+                            }
+                            toAffectCount = transContext.ChangeTracker.Entries().Count(x => x.State == EntityState.Modified);
+                            affectedCount = await transContext.SaveChangesAsync();
+                            transaction.Commit();
+                            return Ok(new { toAffectCount = toAffectCount, affectedCount = affectedCount, message="All Ok" });
+                        }
+                        catch (Exception e)
+                        {
+                            transaction.Rollback();
+                            Console.WriteLine(e);
+                            return StatusCode(StatusCodes.Status500InternalServerError,
+                                new
+                                {
+                                    toAffectCount = toAffectCount, affectedCount = affectedCount, message = e.Message
+                                });
+                           
+                        }
+                    }
+
+                }
+                return Ok(new { toAffectCount = toAffectCount, affectedCount = affectedCount });
+            }
+            return BadRequest();
+        }
         [HttpGet("ShopProductAttrCombinations")]
         public async Task<ActionResult<IEnumerable<ProductAttrCombinationDto>>> GetShopProductAttrCombinations(int productId, int shopId)
         {

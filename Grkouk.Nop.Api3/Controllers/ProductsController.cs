@@ -626,6 +626,76 @@ namespace Grkouk.Nop.Api3.Controllers
 
             return product;
         }
+        [HttpGet("ShopFeaturedProductList")]
+        public async Task<ActionResult<IEnumerable<ProductListDto>>> GetShopFeaturedProductList( int shopId)
+        {
+            if (shopId > 0)
+            {
+                var urlBase = "";
+                var flt = (ShopEnum)shopId;
+                IQueryable<Product> items;
+                IQueryable<ProductPictureMapping> itemPictureMappings;
+                switch (flt)
+                {
+                    case ShopEnum.ShopAngelikasCreations:
+                        urlBase = "https://angelikascreations.com/images/thumbs/000/";
+                        items = _angContext.Product.Where(p => p.ShowOnHomepage );
+                        itemPictureMappings = _angContext.ProductPictureMapping.Where(p => p.Product.ShowOnHomepage);
+                        break;
+                    case ShopEnum.ShopHandmadeCreations:
+                        urlBase = "https://handmade-creations.com/images/thumbs/000/";
+                        items = _handContext.Product.Where(p => p.ShowOnHomepage );
+                        itemPictureMappings = _handContext.ProductPictureMapping.Where(p => p.Product.ShowOnHomepage);
+                        break;
+                    case ShopEnum.ShopToBraxiolaki:
+                        urlBase = "https://tobraxiolaki.gr/images/thumbs/000/";
+                        items = _braxiolakiContext.Product.Where(p => p.ShowOnHomepage );
+                        itemPictureMappings = _braxiolakiContext.ProductPictureMapping.Where(p => p.Product.ShowOnHomepage);
+                        break;
+                    default:
+                        return BadRequest();
+                }
+
+                var itemsToReturn = new List<ProductListDto>();
+
+                foreach (var item in items)
+                {
+                    var itemMappings = itemPictureMappings.Where(p => p.ProductId == item.Id)
+                        .OrderBy(o=>o.DisplayOrder)
+                        .Select(p => new ProductPictureDto
+                        {
+                        
+                            ProductId = p.ProductId,
+                            PictureId = p.PictureId,
+                            ProductName = $"{{{p.Product.Sku}}} {p.Product.Name}",
+                            SeoFilename = p.Picture.SeoFilename,
+                            MimeType = p.Picture.MimeType
+
+                        })
+                        .ToList();
+                    
+                    var prodItem = new ProductListDto()
+                    {
+                        Id = item.Id,
+                        Name = item.Name,
+                        NameCombined = $"{{{item.Sku}}} {item.Name}"
+                        
+                    };
+                    if ( itemMappings.Count==0)
+                    {
+                        prodItem.ImageUrl = string.Empty;
+                    }
+                    else
+                    {
+                        prodItem.ImageUrl = GetProductImageUrl(itemMappings[0].PictureId, itemMappings[0].SeoFilename,
+                            itemMappings[0].MimeType, urlBase);
+                    }
+                    itemsToReturn.Add(prodItem);
+                }
+                return Ok(itemsToReturn);
+            }
+            return BadRequest();
+        }
 
         private bool ProductExists(int id)
         {

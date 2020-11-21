@@ -660,7 +660,7 @@ namespace Grkouk.Nop.Api3.Controllers
 
                 foreach (var item in items)
                 {
-                    var itemMappings = itemPictureMappings.Where(p => p.ProductId == item.Id)
+                    var itemMappings = await itemPictureMappings.Where(p => p.ProductId == item.Id)
                         .OrderBy(o=>o.DisplayOrder)
                         .Select(p => new ProductPictureDto
                         {
@@ -672,7 +672,7 @@ namespace Grkouk.Nop.Api3.Controllers
                             MimeType = p.Picture.MimeType
 
                         })
-                        .ToList();
+                        .ToListAsync();
                     
                     var prodItem = new ProductListDto()
                     {
@@ -695,6 +695,78 @@ namespace Grkouk.Nop.Api3.Controllers
                 return Ok(itemsToReturn);
             }
             return BadRequest();
+        }
+         [HttpPost("UncheckFeaturedProducts")]
+        public async Task<IActionResult> UncheckFeaturedProducts(int shopId, string productIdList)
+        {
+            if (shopId <= 0)
+            {
+                return BadRequest();
+            }
+
+            if (productIdList.Length<=0)
+            {
+                return BadRequest();
+            }
+
+            //string[] idList = productIdList.Split(";");
+            var tagIds = new List<int>(productIdList.Split(',').Select(s => int.Parse(s)));
+            if (tagIds.Count<=0)
+            {
+                return BadRequest();
+            }
+            BaseNopContext transContext;
+            int affectedCount = 0;
+            int toAffectCount = 0;
+            var flt = (ShopEnum)shopId;
+
+            switch (flt)
+            {
+                case ShopEnum.ShopAngelikasCreations:
+                    transContext = _angContext;
+
+                    break;
+                case ShopEnum.ShopHandmadeCreations:
+                    transContext = _handContext;
+                    break;
+                case ShopEnum.ShopToBraxiolaki:
+                    transContext = _braxiolakiContext;
+                    break;
+                default:
+                    return BadRequest();
+            }
+
+            await using var transaction = await transContext.Database.BeginTransactionAsync();
+            var t = await transContext.Product.Where(p => tagIds.Contains(p.Id)).ToListAsync();
+            
+            if (!(t?.Count > 0)) return Ok(new {toAffectCount = toAffectCount, affectedCount = affectedCount});
+            try
+            {
+                int i = 0;
+                foreach (var item in t)
+                {
+                    i++;
+                    item.ShowOnHomepage = false;
+                }
+                toAffectCount = transContext.ChangeTracker.Entries().Count(x => x.State == EntityState.Modified);
+                affectedCount = await transContext.SaveChangesAsync();
+                await transaction.CommitAsync();
+                return Ok(new { toAffectCount = toAffectCount, affectedCount = affectedCount, message = "Removed from Homepage" });
+            }
+            catch (Exception e)
+            {
+                await transaction.RollbackAsync();
+                Console.WriteLine(e);
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    new
+                    {
+                        toAffectCount = toAffectCount,
+                        affectedCount = affectedCount,
+                        message = e.Message
+                    });
+
+            }
+
         }
 
         private bool ProductExists(int id)

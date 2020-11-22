@@ -626,6 +626,148 @@ namespace Grkouk.Nop.Api3.Controllers
 
             return product;
         }
+        [HttpGet("ShopFeaturedProductList")]
+        public async Task<ActionResult<IEnumerable<ProductListDto>>> GetShopFeaturedProductList( int shopId)
+        {
+            if (shopId > 0)
+            {
+                var urlBase = "";
+                var flt = (ShopEnum)shopId;
+                IQueryable<Product> items;
+                IQueryable<ProductPictureMapping> itemPictureMappings;
+                switch (flt)
+                {
+                    case ShopEnum.ShopAngelikasCreations:
+                        urlBase = "https://angelikascreations.com/images/thumbs/000/";
+                        items = _angContext.Product.Where(p => p.ShowOnHomepage );
+                        itemPictureMappings = _angContext.ProductPictureMapping.Where(p => p.Product.ShowOnHomepage);
+                        break;
+                    case ShopEnum.ShopHandmadeCreations:
+                        urlBase = "https://handmade-creations.com/images/thumbs/000/";
+                        items = _handContext.Product.Where(p => p.ShowOnHomepage );
+                        itemPictureMappings = _handContext.ProductPictureMapping.Where(p => p.Product.ShowOnHomepage);
+                        break;
+                    case ShopEnum.ShopToBraxiolaki:
+                        urlBase = "https://tobraxiolaki.gr/images/thumbs/000/";
+                        items = _braxiolakiContext.Product.Where(p => p.ShowOnHomepage );
+                        itemPictureMappings = _braxiolakiContext.ProductPictureMapping.Where(p => p.Product.ShowOnHomepage);
+                        break;
+                    default:
+                        return BadRequest();
+                }
+
+                var itemsToReturn = new List<ProductListDto>();
+
+                foreach (var item in items)
+                {
+                    var itemMappings = await itemPictureMappings.Where(p => p.ProductId == item.Id)
+                        .OrderBy(o=>o.DisplayOrder)
+                        .Select(p => new ProductPictureDto
+                        {
+                        
+                            ProductId = p.ProductId,
+                            PictureId = p.PictureId,
+                            ProductName = $"{{{p.Product.Sku}}} {p.Product.Name}",
+                            SeoFilename = p.Picture.SeoFilename,
+                            MimeType = p.Picture.MimeType
+
+                        })
+                        .ToListAsync();
+                    
+                    var prodItem = new ProductListDto()
+                    {
+                        Id = item.Id,
+                        Name = item.Name,
+                        NameCombined = $"{{{item.Sku}}} {item.Name}"
+                        
+                    };
+                    if ( itemMappings.Count==0)
+                    {
+                        prodItem.ImageUrl = string.Empty;
+                    }
+                    else
+                    {
+                        prodItem.ImageUrl = GetProductImageUrl(itemMappings[0].PictureId, itemMappings[0].SeoFilename,
+                            itemMappings[0].MimeType, urlBase);
+                    }
+                    itemsToReturn.Add(prodItem);
+                }
+                return Ok(itemsToReturn);
+            }
+            return BadRequest();
+        }
+         [HttpPost("UncheckFeaturedProducts")]
+        public async Task<IActionResult> UncheckFeaturedProducts(int shopId, string productIdList)
+        {
+            if (shopId <= 0)
+            {
+                return BadRequest();
+            }
+
+            if (productIdList.Length<=0)
+            {
+                return BadRequest();
+            }
+
+            //string[] idList = productIdList.Split(";");
+            var tagIds = new List<int>(productIdList.Split(',').Select(s => int.Parse(s)));
+            if (tagIds.Count<=0)
+            {
+                return BadRequest();
+            }
+            BaseNopContext transContext;
+            int affectedCount = 0;
+            int toAffectCount = 0;
+            var flt = (ShopEnum)shopId;
+
+            switch (flt)
+            {
+                case ShopEnum.ShopAngelikasCreations:
+                    transContext = _angContext;
+
+                    break;
+                case ShopEnum.ShopHandmadeCreations:
+                    transContext = _handContext;
+                    break;
+                case ShopEnum.ShopToBraxiolaki:
+                    transContext = _braxiolakiContext;
+                    break;
+                default:
+                    return BadRequest();
+            }
+
+            await using var transaction = await transContext.Database.BeginTransactionAsync();
+            var t = await transContext.Product.Where(p => tagIds.Contains(p.Id)).ToListAsync();
+            
+            if (!(t?.Count > 0)) return Ok(new {toAffectCount = toAffectCount, affectedCount = affectedCount});
+            try
+            {
+                int i = 0;
+                foreach (var item in t)
+                {
+                    i++;
+                    item.ShowOnHomepage = false;
+                }
+                toAffectCount = transContext.ChangeTracker.Entries().Count(x => x.State == EntityState.Modified);
+                affectedCount = await transContext.SaveChangesAsync();
+                await transaction.CommitAsync();
+                return Ok(new { toAffectCount = toAffectCount, affectedCount = affectedCount, message = "Removed from Homepage" });
+            }
+            catch (Exception e)
+            {
+                await transaction.RollbackAsync();
+                Console.WriteLine(e);
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    new
+                    {
+                        toAffectCount = toAffectCount,
+                        affectedCount = affectedCount,
+                        message = e.Message
+                    });
+
+            }
+
+        }
 
         private bool ProductExists(int id)
         {

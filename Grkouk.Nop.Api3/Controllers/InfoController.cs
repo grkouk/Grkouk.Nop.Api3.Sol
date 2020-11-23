@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 using Grkouk.Nop.Api3.Data;
 using Grkouk.Nop.Api3.Models;
@@ -11,9 +12,9 @@ using Microsoft.EntityFrameworkCore;
 namespace Grkouk.Nop.Api3.Controllers
 {
     [ApiController]
-  
+
     [Route("[controller]")]
-    public class InfoController: ControllerBase
+    public class InfoController : ControllerBase
     {
         private readonly AngelikasDbContext _angContext;
         private readonly HandmadeDbContext _handContext;
@@ -28,16 +29,16 @@ namespace Grkouk.Nop.Api3.Controllers
 
         }
         [HttpGet]
-        public  IActionResult Get(int shopId=0)
+        public IActionResult Get(int shopId = 0)
         {
             string databaseServer;
             string shopName;
-            if (shopId==0)
+            if (shopId == 0)
             {
                 shopId = 1;
             }
             var flt = (ShopEnum)shopId;
-           
+
             switch (flt)
             {
                 case ShopEnum.ShopAngelikasCreations:
@@ -57,8 +58,24 @@ namespace Grkouk.Nop.Api3.Controllers
                     shopName = "Angelikas Creations";
                     break;
             }
-           
-            return  Ok(new {ServerName=$"{databaseServer}",ShopName=$"{shopName}"});
+
+            string appVersion;
+            try
+            {
+                var vs = Assembly.GetEntryAssembly().GetName().Version.ToString();
+                appVersion = vs;
+            }
+            catch 
+            {
+                appVersion = "Error getting version";
+            }
+
+            return Ok(new
+            {
+                ServerName = $"{databaseServer}",
+                ShopName = $"{shopName}",
+                AssemblyVersion = $"{appVersion}"
+            });
         }
     }
 }
